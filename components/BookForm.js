@@ -18,7 +18,7 @@ const BookForm = () => {
         };
 
         try {
-            const response = await axios.post('http://localhost:5001/api/generate-book', formData, {
+            const response = await axios.post(`${process.env.REACT_APP_API_ENDPOINT}`, formData, {
                 headers: { 'Content-Type': 'application/json' },
                 responseType: 'blob', // Ensure response is handled as a Blob
             });
