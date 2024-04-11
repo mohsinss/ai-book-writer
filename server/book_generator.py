@@ -13,6 +13,7 @@ load_dotenv()
 
 # Define your API keys here
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
+# ANTHROPIC_API_KEY = "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"
 stability_api_key = os.environ.get('STABILITY_API_KEY')
 
 
