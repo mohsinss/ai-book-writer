@@ -10,9 +10,6 @@ from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
 # Define your API keys here
-ANTHROPIC_API_KEY = "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"
-# ANTHROPIC_API_KEY = "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"
-stability_api_key = "sk-0tRzR3toAMfTVDs0OH9FnSUj0wtR5DiV5oUjt1VrrcuW30UT"
 
 
 def remove_first_line(test_string):
