@@ -2,7 +2,7 @@ from flask import Flask, request, send_file, jsonify, current_app
 from flask_cors import CORS
 import io
 import traceback
-from book_generator import generate_book, generate_title, create_cover_image, create_doc
+from book_generator import generate_book, generate_title, create_doc
 
 app = Flask(__name__)
 CORS(app)
@@ -23,10 +23,10 @@ def generate_book_endpoint():
 
         chapters_content = generate_book(writing_style, book_description, chapter_titles, chapter_elaborations)
         title = generate_title(book_description)
-        cover_image_path = create_cover_image(book_description)
+        # cover_image_path = create_cover_image(book_description)
 
         file_stream = io.BytesIO()
-        create_doc(title, 'Author Name', chapters_content, chapter_titles, cover_image_path, file_stream)
+        create_doc(title, 'Author Name', chapters_content, chapter_titles, file_stream)
         file_stream.seek(0)
 
         return send_file(file_stream, as_attachment=True, attachment_filename=f"{title}.docx")

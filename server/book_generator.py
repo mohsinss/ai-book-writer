@@ -1,7 +1,6 @@
 import os
 import re
 import time
-import base64
 import requests
 import json
 from docx import Document
@@ -13,16 +12,12 @@ load_dotenv()
 
 # Define your API keys here
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
-stability_api_key = os.environ.get('STABILITY_API_KEY')
-
 
 def remove_first_line(test_string):
     return re.sub(r'^.*\n', '', test_string, count=1) if test_string.startswith("Here") and test_string.split("\n")[0].strip().endswith(":") else test_string
 
-
 def word_count(s):
     return len(re.findall(r'\w+', s))
-
 
 def generate_text(prompt, model="claude-3-haiku-20240307", max_tokens=3000, temperature=0.7, retries=5, max_wait=60):
     headers = {
@@ -59,66 +54,12 @@ def generate_text(prompt, model="claude-3-haiku-20240307", max_tokens=3000, temp
                 f"Failed to fetch data from API. Status Code: {response.status_code}, Attempt: {attempt+1}")
     raise Exception("Max retries exceeded.")
 
-
-def generate_cover_prompt(plot):
-    prompt = f"Plot: {plot}\n\n--\n\nDescribe the cover we should create, based on the plot. This should be visually rich and detailed, ideally two sentences long."
-    generated_prompt = generate_text(prompt)
-    if not generated_prompt.strip():
-        raise ValueError("Generated prompt is empty.")
-    if len(generated_prompt) > 1000:
-        raise ValueError("Generated prompt is too long.")
-    if "example_disallowed_content" in generated_prompt.lower():
-        raise ValueError("Generated prompt contains disallowed content.")
-    return generated_prompt
-
-
 def generate_title(plot):
     prompt = f"Here is the plot for the book: {plot}\n\n--\n\nRespond with a great title for this book. Only respond with the title, nothing else is allowed."
     return remove_first_line(generate_text(prompt))
 
-
-def create_cover_image(plot_description):
-    engine_id = "stable-diffusion-xl-beta-v2-2-2"
-    api_host = 'https://api.stability.ai'
-    api_key = stability_api_key  # Corrected variable name
-    response = requests.post(
-        f"{api_host}/v1/generation/{engine_id}/text-to-image",
-        headers={
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        },
-        json={
-            "text_prompts": [{"text": plot_description}],
-            "cfg_scale": 7,
-            "clip_guidance_preset": "FAST_BLUE",
-            "height": 768,
-            "width": 512,
-            "samples": 1,
-            "steps": 30,
-        },
-    )
-    # The rest of your function continues...
-
-    if response.status_code != 200:
-        raise Exception("Non-200 response: " + str(response.text))
-    data = response.json()
-    image_path = "./cover.png"  # Changed to a local file path
-    for image in data["artifacts"]:
-        with open(image_path, "wb") as f:
-            f.write(base64.b64decode(image["base64"]))
-    return image_path
-
-
-def create_doc(title, author, chapters, chapter_titles, cover_image_path, file_stream):
+def create_doc(title, author, chapters, chapter_titles, file_stream):
     document = Document()
-
-    try:
-        document.add_picture(cover_image_path, width=Inches(6))
-        document.add_page_break()
-    except Exception as e:
-        print(f"Failed to add cover image: {e}. Continuing without it.")
-
     document.add_heading(title, level=0)
     run = document.add_paragraph().add_run(f"Author: {author}\n\n")
     run.bold = True
@@ -137,7 +78,6 @@ def create_doc(title, author, chapters, chapter_titles, cover_image_path, file_s
 
     document.save(file_stream)
 
-
 def generate_book(writing_style, book_description, chapter_titles, chapter_elaborations):
     all_chapters_content = []
 
@@ -146,7 +86,7 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
         subtitles_content = []
 
         # Let's assume each chapter should have content for 8 subtitles
-        for subtitle_index in range(1, 9):
+        for subtitle_index in range(1, 2):
             attempts, subtitle_generated, max_attempts = 0, False, 3
 
             while not subtitle_generated and attempts < max_attempts:
