@@ -5,14 +5,29 @@ import requests
 import json
 import uuid
 import io
+import pymongo
+
 from docx import Document
-from docx.shared import RGBColor, Inches
+from docx.shared import RGBColor
 from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from bson.binary import Binary
+from bson.objectid import ObjectId
+from pymongo import MongoClient
 from dotenv import load_dotenv
+
+# Load environment variables
 load_dotenv()
 
+# Environment variable for MongoDB URI
+MONGO_URI = os.getenv('MONGO_URI')  # Make sure to set this in your .env file
+
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
+
+# Initialize MongoDB connection
+client = MongoClient(MONGO_URI)
+db = client.get_default_database()  # This will connect to the default database specified in the URI
+collection = db['books'] 
 
 def remove_first_line(test_string):
     return re.sub(r'^.*\n', '', test_string, count=1) if test_string.startswith("Here") and test_string.split("\n")[0].strip().endswith(":") else test_string
@@ -44,15 +59,13 @@ def generate_text(prompt, model="claude-3-haiku-20240307", max_tokens=3000, temp
                     raise ValueError("Empty response from the model.")
                 return response_text
             except (KeyError, IndexError):
-                raise ValueError(
-                    "Unexpected response structure from the model.")
+                raise ValueError("Unexpected response structure from the model.")
         elif response.status_code == 429:
             wait = min(2 ** attempt, max_wait)
             print(f"Rate limit exceeded. Retrying in {wait} seconds...")
             time.sleep(wait)
         else:
-            raise ValueError(
-                f"Failed to fetch data from API. Status Code: {response.status_code}, Attempt: {attempt+1}")
+            raise ValueError(f"Failed to fetch data from API. Status Code: {response.status_code}, Attempt: {attempt+1}")
     raise Exception("Max retries exceeded.")
 
 def generate_title(plot):
@@ -67,7 +80,6 @@ def create_doc(title, author, chapters, chapter_titles, file_stream):
 
     for i, chapter_title in enumerate(chapter_titles):
         chapter_content = chapters[i]
-
         document.add_heading(chapter_title, level=1)
         paragraphs = chapter_content.split('\n')
         for paragraph in paragraphs:
@@ -79,11 +91,22 @@ def create_doc(title, author, chapters, chapter_titles, file_stream):
 
     document.save(file_stream)
 
-def save_book(file_stream, unique_filename):
-    file_path = f"generated_books/{unique_filename}.docx"
-    with open(file_path, 'wb') as file:
-        file.write(file_stream.getvalue())
-    return file_path
+def save_book(file_stream, title, unique_filename):
+    # Convert file stream to binary
+    binary_file = Binary(file_stream.getvalue())
+    
+    # Create a document to store in MongoDB
+    book_document = {
+        "filename": unique_filename,
+        "title": title,
+        "content": binary_file
+    }
+    
+    # Insert the document into the collection
+    result = collection.insert_one(book_document)
+    
+    # Return the MongoDB ID of the inserted document
+    return result.inserted_id
 
 def generate_book_data(data):
     writing_style = data.get('writing_style')
@@ -102,10 +125,10 @@ def generate_book_data(data):
     file_stream.seek(0)
 
     unique_filename = str(uuid.uuid4())
-    file_path = save_book(file_stream, unique_filename)
-    download_url = f"http://localhost:5001/download/{unique_filename}.docx"
+    document_id = save_book(file_stream, title, unique_filename)
+    download_url = f"http://localhost:5001/download/{str(document_id)}"
 
-    return title, download_url
+    return title, download_url, document_id
 
 def generate_book(writing_style, book_description, chapter_titles, chapter_elaborations):
     all_chapters_content = []
@@ -129,8 +152,7 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
                     subtitles_content.append(subtitle_content)
                 else:
                     attempts += 1
-                    print(
-                        f"Insufficient content for subtitle {subtitle_index} in chapter '{chapter_title}'. Attempting regeneration, attempt #{attempts}.")
+                    print(f"Insufficient content for subtitle {subtitle_index} in chapter '{chapter_title}'. Attempting regeneration, attempt #{attempts}.")
 
         chapter_content = "\n\n".join(subtitles_content)
         all_chapters_content.append(chapter_content)
@@ -138,3 +160,17 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
 
     print("Book content generation completed.")
     return all_chapters_content
+
+def download_book(document_id):
+    try:
+        # Fetch the document by its ID from MongoDB
+        book_document = collection.find_one({"_id": ObjectId(document_id)})
+        if not book_document:
+            return None, "File not found", 404
+        
+        # Create a BytesIO object from the binary data stored in MongoDB
+        file_stream = io.BytesIO(book_document['content'])
+        filename = f"{book_document['title']}.docx"
+        return file_stream, filename, None
+    except Exception as e:
+        return None, str(e), 500

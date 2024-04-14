@@ -1,6 +1,6 @@
 // BookForm.js
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import styles from './BookForm.module.css';
 
@@ -11,62 +11,142 @@ const BookForm = () => {
   const [chapterTitles, setChapterTitles] = useState([]);
   const [checkedChapters, setCheckedChapters] = useState([]);
   const [chapterElaborations, setChapterElaborations] = useState([]);
+  const [books, setBooks] = useState([]);
   const [downloadUrl, setDownloadUrl] = useState('');
+  const [title, setTitle] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFormModified, setIsFormModified] = useState(false);
+  const [bookId, setBookId] = useState('');
 
+  
   const handleChapterCountChange = (e) => {
     const count = parseInt(e.target.value, 10);
     setChapterCount(count);
     setChapterTitles(Array(count).fill(''));
     setCheckedChapters(Array(count).fill(false));
     setChapterElaborations(Array(count).fill(''));
+    setIsFormModified(true);
   };
 
   const handleChapterTitleChange = (index, value) => {
     const updatedTitles = [...chapterTitles];
     updatedTitles[index] = value;
     setChapterTitles(updatedTitles);
+    setIsFormModified(true);
   };
 
   const handleChapterCheck = (index) => {
     const updatedCheckedChapters = [...checkedChapters];
     updatedCheckedChapters[index] = !updatedCheckedChapters[index];
     setCheckedChapters(updatedCheckedChapters);
+    setIsFormModified(true);
   };
 
   const handleChapterElaborationChange = (index, value) => {
     const updatedElaborations = [...chapterElaborations];
     updatedElaborations[index] = value;
     setChapterElaborations(updatedElaborations);
+    setIsFormModified(true);
+  };
+
+  const handleInputChange = () => {
+    setIsFormModified(true);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setIsSubmitting(true);
     const formData = {
-      writing_style: writingStyle,
-      book_description: bookDescription,
-      chapter_titles: chapterTitles,
-      chapter_elaborations: chapterElaborations,
+        writing_style: writingStyle,
+        book_description: bookDescription,
+        chapter_titles: chapterTitles,
+        chapter_elaborations: chapterElaborations,
     };
 
     try {
-      const response = await axios.post('http://localhost:5001/api/generate-book', formData, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+        const response = await axios.post('http://localhost:5001/api/generate-book', formData, {
+            headers: { 'Content-Type': 'application/json' },
+        });
 
-      setDownloadUrl(response.data.download_url);
+        if (response.data && response.data.download_url) {
+          setDownloadUrl(response.data.download_url);
+          setTitle(response.data.title);
+          setBookId(response.data.id); // Store the book ID
+      } else {
+          console.error('No download URL received:', response.data);
+      }
+        setIsFormModified(false);
     } catch (error) {
-      console.error('Error submitting form:', error);
+        console.error('Error submitting form:', error);
     }
+    setIsSubmitting(false);
+};
+
+useEffect(() => {
+  fetchBooks();
+}, []);
+
+const fetchBooks = async () => {
+  try {
+    const response = await axios.get('http://localhost:5001/api/books');
+    setBooks(response.data);
+  } catch (error) {
+    console.error('Error fetching books:', error);
+  }
+};
+
+  useEffect(() => {
+    axios.get('http://localhost:5001/api/books')
+      .then(response => {
+        setBooks(response.data);
+      })
+      .catch(error => {
+        console.error('Error fetching books:', error);
+      });
+  }, []);
+
+  const handleDownload = (event, bookId, title) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    console.log("Document ID:", bookId);
+    console.log("Title:", title);
+
+    axios.get(`http://localhost:5001/download/${bookId}`, { responseType: 'blob' })
+        .then(response => {
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${title}.docx`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          })
+          .catch(error => {
+              console.error('Error downloading file:', error);
+          });
   };
 
-  const handleDownload = () => {
-    window.location.href = downloadUrl;
-  };
+  
 
   return (
-    <div className={styles.formContainer}>
-      <h2 className={styles.formTitle}>Generate Your Book</h2>
-      <form onSubmit={handleSubmit} className={styles.form}>
+<div className={styles.container}>
+  <div className={styles.bookListContainer}>
+    <h3>Generated Books:</h3>
+    {books.length > 0 ? (
+      <ul className={styles.bookList}>
+        {books.map(book => (
+          <li key={book.id}>{book.title}</li>
+        ))}
+      </ul>
+    ) : (
+      <p>No books found.</p>
+    )}
+  </div>
+
+  <div className={styles.formContainer}>
+    <h2 className={styles.formTitle}>Generate Your Book</h2>
+    <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
           <label htmlFor="writingStyle" className={styles.label}>
             Writing Style
@@ -75,7 +155,10 @@ const BookForm = () => {
             type="text"
             id="writingStyle"
             value={writingStyle}
-            onChange={(e) => setWritingStyle(e.target.value)}
+            onChange={(e) => {
+              setWritingStyle(e.target.value);
+              handleInputChange();
+            }}
             className={styles.input}
           />
         </div>
@@ -86,7 +169,10 @@ const BookForm = () => {
           <textarea
             id="bookDescription"
             value={bookDescription}
-            onChange={(e) => setBookDescription(e.target.value)}
+            onChange={(e) => {
+              setBookDescription(e.target.value);
+              handleInputChange();
+            }}
             className={styles.textarea}
           />
         </div>
@@ -138,15 +224,22 @@ const BookForm = () => {
             )}
           </div>
         ))}
-        <button type="submit" className={styles.submitButton}>
-          Submit
-        </button>
-        {downloadUrl && (
-          <button onClick={handleDownload} className={styles.downloadButton}>
-            Download
-          </button>
-        )}
+    <div className={styles.buttonContainer}>
+      <button
+        type="submit"
+        className={styles.submitButton}
+        disabled={isSubmitting || !isFormModified}
+      >
+        {isSubmitting ? 'Generating...' : 'Submit'}
+      </button>
+      {downloadUrl && (
+    <button onClick={(event) => handleDownload(event, bookId, title)} className={styles.downloadButton}>
+        Download your book: {title}
+    </button>
+)}
+    </div>
       </form>
+      </div>
     </div>
   );
 };
