@@ -1,8 +1,7 @@
 from flask import Flask, request, send_file, jsonify, current_app
 from flask_cors import CORS
-import io
 import traceback
-from book_generator import generate_book, generate_title, create_doc
+from book_generator import generate_book_data
 
 app = Flask(__name__)
 CORS(app)
@@ -13,27 +12,18 @@ def generate_book_endpoint():
         if not request.is_json:
             return jsonify({"error": "Request must be JSON"}), 400
         data = request.get_json()
-        writing_style = data.get('writing_style')
-        book_description = data.get('book_description')
-        chapter_titles = data.get('chapter_titles')
-        chapter_elaborations = data.get('chapter_elaborations', [])  # Default to an empty list if not provided
 
-        if not all([writing_style, book_description, chapter_titles]):
-            return jsonify({"error": "Missing data for writing style, book description, or chapter titles"}), 400
-
-        chapters_content = generate_book(writing_style, book_description, chapter_titles, chapter_elaborations)
-        title = generate_title(book_description)
-        # cover_image_path = create_cover_image(book_description)
-
-        file_stream = io.BytesIO()
-        create_doc(title, 'Author Name', chapters_content, chapter_titles, file_stream)
-        file_stream.seek(0)
-
-        return send_file(file_stream, as_attachment=True, attachment_filename=f"{title}.docx")
+        title, download_url = generate_book_data(data)
+        return jsonify({"message": "Book generated successfully", "download_url": download_url}), 200
 
     except Exception as e:
         current_app.logger.error(f"Failed to generate book: {e}\n{traceback.format_exc()}")
         return jsonify({"error": "Error generating book", "message": str(e)}), 500
+
+@app.route('/download/<filename>', methods=['GET'])
+def download_file(filename):
+    file_path = f"generated_books/{filename}"
+    return send_file(file_path, as_attachment=True)
 
 @app.route('/', methods=['GET'])
 def index():

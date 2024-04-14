@@ -11,6 +11,7 @@ const BookForm = () => {
   const [chapterTitles, setChapterTitles] = useState([]);
   const [checkedChapters, setCheckedChapters] = useState([]);
   const [chapterElaborations, setChapterElaborations] = useState([]);
+  const [downloadUrl, setDownloadUrl] = useState('');
 
   const handleChapterCountChange = (e) => {
     const count = parseInt(e.target.value, 10);
@@ -50,29 +51,16 @@ const BookForm = () => {
     try {
       const response = await axios.post('http://localhost:5001/api/generate-book', formData, {
         headers: { 'Content-Type': 'application/json' },
-        responseType: 'blob',
       });
 
-      const downloadUrl = window.URL.createObjectURL(new Blob([response.data], {
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      }));
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-
-      const contentDisposition = response.headers['content-disposition'];
-      let fileName = 'generatedBook.docx';
-      if (contentDisposition) {
-        const fileNameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (fileNameMatch.length > 1) fileName = fileNameMatch[1].replace(/['"]/g, '');
-      }
-
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      setDownloadUrl(response.data.download_url);
     } catch (error) {
       console.error('Error submitting form:', error);
     }
+  };
+
+  const handleDownload = () => {
+    window.location.href = downloadUrl;
   };
 
   return (
@@ -153,6 +141,11 @@ const BookForm = () => {
         <button type="submit" className={styles.submitButton}>
           Submit
         </button>
+        {downloadUrl && (
+          <button onClick={handleDownload} className={styles.downloadButton}>
+            Download
+          </button>
+        )}
       </form>
     </div>
   );

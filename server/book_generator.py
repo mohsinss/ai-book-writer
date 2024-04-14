@@ -3,6 +3,8 @@ import re
 import time
 import requests
 import json
+import uuid
+import io
 from docx import Document
 from docx.shared import RGBColor, Inches
 from docx.shared import Pt
@@ -10,7 +12,6 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from dotenv import load_dotenv
 load_dotenv()
 
-# Define your API keys here, 
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 
 def remove_first_line(test_string):
@@ -78,6 +79,34 @@ def create_doc(title, author, chapters, chapter_titles, file_stream):
 
     document.save(file_stream)
 
+def save_book(file_stream, unique_filename):
+    file_path = f"generated_books/{unique_filename}.docx"
+    with open(file_path, 'wb') as file:
+        file.write(file_stream.getvalue())
+    return file_path
+
+def generate_book_data(data):
+    writing_style = data.get('writing_style')
+    book_description = data.get('book_description')
+    chapter_titles = data.get('chapter_titles')
+    chapter_elaborations = data.get('chapter_elaborations', [])
+
+    if not all([writing_style, book_description, chapter_titles]):
+        raise ValueError("Missing data for writing style, book description, or chapter titles")
+
+    chapters_content = generate_book(writing_style, book_description, chapter_titles, chapter_elaborations)
+    title = generate_title(book_description)
+
+    file_stream = io.BytesIO()
+    create_doc(title, 'Author Name', chapters_content, chapter_titles, file_stream)
+    file_stream.seek(0)
+
+    unique_filename = str(uuid.uuid4())
+    file_path = save_book(file_stream, unique_filename)
+    download_url = f"http://localhost:5001/download/{unique_filename}.docx"
+
+    return title, download_url
+
 def generate_book(writing_style, book_description, chapter_titles, chapter_elaborations):
     all_chapters_content = []
 
@@ -85,19 +114,16 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
         print(f"Generating content for chapter '{chapter_title}'...")
         subtitles_content = []
 
-        # Let's assume each chapter should have content for 8 subtitles
         for subtitle_index in range(1, 2):
             attempts, subtitle_generated, max_attempts = 0, False, 3
 
             while not subtitle_generated and attempts < max_attempts:
                 subtitle_prompt = f"Subtitle {subtitle_index}: Provide a detailed analysis and insights for '{chapter_title}', as part of a book in the style of '{writing_style}'. Ensure this section contains at least 800 words."
                 
-                # Include the chapter elaboration in the prompt if it's not empty
                 if chapter_elaborations[i]:
                     subtitle_prompt += f" Follow the instructions provided and include the following additional information after thinking it through intelligently. Add them in a way that is balanced and not excessive or abnormal: {chapter_elaborations[i]}"                
                 subtitle_content = generate_text(subtitle_prompt, max_tokens=3000)
 
-                # Ensuring content meets the word count
                 if word_count(subtitle_content) >= 500:
                     subtitle_generated = True
                     subtitles_content.append(subtitle_content)
@@ -106,7 +132,6 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
                     print(
                         f"Insufficient content for subtitle {subtitle_index} in chapter '{chapter_title}'. Attempting regeneration, attempt #{attempts}.")
 
-        # Combine all subtitles into one chapter content
         chapter_content = "\n\n".join(subtitles_content)
         all_chapters_content.append(chapter_content)
         time.sleep(1)  # Pause between chapters to avoid rate limiting
