@@ -5,9 +5,9 @@ import axios from 'axios';
 import styles from './BookForm.module.css';
 
 const BookForm = () => {
-  const [writingStyle, setWritingStyle] = useState('');
-  const [bookDescription, setBookDescription] = useState('');
-  const [chapterCount, setChapterCount] = useState(0);
+  const [writingStyle, setWritingStyle] = useState('Imagine an economist who writes in a style akin to "Freakonomics" turning the mundane into the extraordinary with humor and clarity...');
+  const [bookDescription, setBookDescription] = useState('This book delves into the hidden economics of daily life, employing a witty and accessible approach to unravel the surprising truths behind ordinary activities...');
+  const [chapterCount, setChapterCount] = useState(1);
   const [chapterTitles, setChapterTitles] = useState([]);
   const [checkedChapters, setCheckedChapters] = useState([]);
   const [chapterElaborations, setChapterElaborations] = useState([]);
@@ -177,17 +177,24 @@ const fetchBooks = async () => {
           />
         </div>
         <div className={styles.formGroup}>
-          <label htmlFor="chapterCount" className={styles.label}>
-            Number of Chapters
-          </label>
-          <input
-            type="number"
-            id="chapterCount"
-            value={chapterCount}
-            onChange={handleChapterCountChange}
-            className={styles.input}
-          />
-        </div>
+  <label htmlFor="chapterCount" className={styles.label}>
+    Number of Chapters
+  </label>
+  <select
+    id="chapterCount"
+    value={chapterCount}
+    onChange={handleChapterCountChange}
+    className={styles.input}
+    style={{ width: '70px' }} 
+  >
+    {Array.from({ length: 25 }, (_, i) => (
+      <option key={i} value={i + 1}>
+        {i + 1}
+      </option>
+    ))}
+  </select>
+</div>
+
         {Array.from({ length: chapterCount }, (_, index) => (
           <div key={index} className={styles.formGroup}>
             <div className={styles.chapterTitleWrapper}>
