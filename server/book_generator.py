@@ -143,7 +143,7 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
             while not subtitle_generated and attempts < max_attempts:
                 subtitle_prompt = f"Subtitle {subtitle_index}: Provide a detailed analysis and insights for '{chapter_title}', as part of a book in the style of '{writing_style}'. Ensure this section contains at least 800 words."
                 
-                if chapter_elaborations[i]:
+                if i < len(chapter_elaborations) and chapter_elaborations[i]:
                     subtitle_prompt += f" Follow the instructions provided and include the following additional information after thinking it through intelligently. Add them in a way that is balanced and not excessive or abnormal: {chapter_elaborations[i]}"                
                 subtitle_content = generate_text(subtitle_prompt, max_tokens=3000)
 
