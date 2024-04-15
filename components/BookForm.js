@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import styles from './BookForm.module.css';
+require('dotenv').config();
 
 const BookForm = () => {
   const [writingStyle, setWritingStyle] = useState('Imagine an economist who writes in a style akin to "Freakonomics" turning the mundane into the extraordinary with humor and clarity...');
@@ -57,46 +58,46 @@ const BookForm = () => {
     event.preventDefault();
     setIsSubmitting(true);
     const formData = {
-      writing_style: writingStyle,
-      book_description: bookDescription,
-      chapter_titles: chapterTitles,
-      chapter_elaborations: chapterElaborations,
+        writing_style: writingStyle,
+        book_description: bookDescription,
+        chapter_titles: chapterTitles,
+        chapter_elaborations: chapterElaborations,
     };
 
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/generate-book`, formData, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+        const response = await axios.post('http://localhost:5001/api/generate-book', formData, {
+            headers: { 'Content-Type': 'application/json' },
+        });
 
-      if (response.data && response.data.download_url) {
-        setDownloadUrl(response.data.download_url);
-        setTitle(response.data.title);
-        setBookId(response.data.id); // Store the book ID
+        if (response.data && response.data.download_url) {
+          setDownloadUrl(response.data.download_url);
+          setTitle(response.data.title);
+          setBookId(response.data.id); // Store the book ID
       } else {
-        console.error('No download URL received:', response.data);
+          console.error('No download URL received:', response.data);
       }
-      setIsFormModified(false);
+        setIsFormModified(false);
     } catch (error) {
-      console.error('Error submitting form:', error);
+        console.error('Error submitting form:', error);
     }
     setIsSubmitting(false);
-  };
+};
+
+useEffect(() => {
+  fetchBooks();
+}, []);
+
+const fetchBooks = async () => {
+  try {
+    const response = await axios.get('http://localhost:5001/api/books');
+    setBooks(response.data);
+  } catch (error) {
+    console.error('Error fetching books:', error);
+  }
+};
 
   useEffect(() => {
-    fetchBooks();
-  }, []);
-
-  const fetchBooks = async () => {
-    try {
-      const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/books`);
-      setBooks(response.data);
-    } catch (error) {
-      console.error('Error fetching books:', error);
-    }
-  };
-
-  useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/books`)
+    axios.get('http://localhost:5001/api/books')
       .then(response => {
         setBooks(response.data);
       })
@@ -112,19 +113,19 @@ const BookForm = () => {
     console.log("Document ID:", bookId);
     console.log("Title:", title);
 
-    axios.get(`${process.env.REACT_APP_API_BASE_URL}/download/${bookId}`, { responseType: 'blob' })
-      .then(response => {
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `${title}.docx`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      })
-      .catch(error => {
-        console.error('Error downloading file:', error);
-      });
+    axios.get(`http://localhost:5001/download/${bookId}`, { responseType: 'blob' })
+        .then(response => {
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${title}.docx`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          })
+          .catch(error => {
+              console.error('Error downloading file:', error);
+          });
   };
 
   
