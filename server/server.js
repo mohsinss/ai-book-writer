@@ -246,7 +246,7 @@ async function promptChapterTitles() {
 
 (async () => {
   const writingStyle = "Imagine an economist who writes in a style akin to 'Freakonomics,' turning the mundane into the extraordinary with humor and clarity...";
-  const bookDescription = "This book delves into the hidden economics of daily life, employing a witty and accessible approach to unravel the surprising truths behind ordinary activities...";
+  const bookDescription = "well! This book delves into the hidden economics of daily life, employing a witty and accessible approach to unravel the surprising truths behind ordinary activities...";
 
   const chapterTitles = await promptChapterTitles();
 
