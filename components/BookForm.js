@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import styles from './BookForm.module.css';
-require('dotenv').config();
 
 const BookForm = () => {
   const [writingStyle, setWritingStyle] = useState('Imagine an economist who writes in a style akin to "Freakonomics" turning the mundane into the extraordinary with humor and clarity...');
@@ -19,7 +18,8 @@ const BookForm = () => {
   const [isFormModified, setIsFormModified] = useState(false);
   const [bookId, setBookId] = useState('');
 
-  
+  console.log(process.env.NEXT_PUBLIC_API_BASE_URL); // Debug API base URL
+
   const handleChapterCountChange = (e) => {
     const count = parseInt(e.target.value, 10);
     setChapterCount(count);
@@ -58,96 +58,81 @@ const BookForm = () => {
     event.preventDefault();
     setIsSubmitting(true);
     const formData = {
-        writing_style: writingStyle,
-        book_description: bookDescription,
-        chapter_titles: chapterTitles,
-        chapter_elaborations: chapterElaborations,
+      writing_style: writingStyle,
+      book_description: bookDescription,
+      chapter_titles: chapterTitles,
+      chapter_elaborations: chapterElaborations,
     };
 
     try {
-        const response = await axios.post('http://localhost:5001/api/generate-book', formData, {
-            headers: { 'Content-Type': 'application/json' },
-        });
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/generate-book`, formData, {
+        headers: { 'Content-Type': 'application/json' },
+      });
 
-        if (response.data && response.data.download_url) {
-          setDownloadUrl(response.data.download_url);
-          setTitle(response.data.title);
-          setBookId(response.data.id); // Store the book ID
+      if (response.data && response.data.download_url) {
+        setDownloadUrl(response.data.download_url);
+        setTitle(response.data.title);
+        setBookId(response.data.id); // Store the book ID
       } else {
-          console.error('No download URL received:', response.data);
+        console.error('No download URL received:', response.data);
       }
-        setIsFormModified(false);
+      setIsFormModified(false);
     } catch (error) {
-        console.error('Error submitting form:', error);
+      console.error('Error submitting form:', error);
     }
     setIsSubmitting(false);
-};
-
-useEffect(() => {
-  fetchBooks();
-}, []);
-
-const fetchBooks = async () => {
-  try {
-    const response = await axios.get('http://localhost:5001/api/books');
-    setBooks(response.data);
-  } catch (error) {
-    console.error('Error fetching books:', error);
-  }
-};
+  };
 
   useEffect(() => {
-    axios.get('http://localhost:5001/api/books')
-      .then(response => {
-        setBooks(response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching books:', error);
-      });
+    fetchBooks();
   }, []);
+
+  const fetchBooks = async () => {
+    try {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/books`);
+      setBooks(response.data);
+    } catch (error) {
+      console.error('Error fetching books:', error);
+    }
+  };
 
   const handleDownload = (event, bookId, title) => {
     event.preventDefault();
     event.stopPropagation();
 
-    console.log("Document ID:", bookId);
-    console.log("Title:", title);
-
-    axios.get(`http://localhost:5001/download/${bookId}`, { responseType: 'blob' })
-        .then(response => {
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `${title}.docx`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          })
-          .catch(error => {
-              console.error('Error downloading file:', error);
-          });
+    axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/download/${bookId}`, { responseType: 'blob' })
+      .then(response => {
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${title}.docx`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      })
+      .catch(error => {
+        console.error('Error downloading file:', error);
+      });
   };
 
-  
-
   return (
-<div className={styles.container}>
-  <div className={styles.bookListContainer}>
-    <h3>Generated Books:</h3>
-    {books.length > 0 ? (
-      <ul className={styles.bookList}>
-        {books.map(book => (
-          <li key={book.id}>{book.title}</li>
-        ))}
-      </ul>
-    ) : (
-      <p>No books found.</p>
-    )}
-  </div>
+    <div className={styles.container}>
+      <div className={styles.bookListContainer}>
+        <h3>Generated Books:</h3>
+        {books.length > 0 ? (
+          <ul className={styles.bookList}>
+            {books.map(book => (
+              <li key={book.id}>{book.title}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>No books found.</p>
+        )}
+      </div>
 
-  <div className={styles.formContainer}>
-    <h2 className={styles.formTitle}>Generate Your Book</h2>
-    <form onSubmit={handleSubmit} className={styles.form}>
+      <div className={styles.formContainer}>
+        <h2 className={styles.formTitle}>Generate Your Book</h2>
+        <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
           <label htmlFor="writingStyle" className={styles.label}>
             Writing Style
