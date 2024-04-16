@@ -111,13 +111,14 @@ def save_book(file_stream, title, unique_filename):
 def generate_book_data(data):
     writing_style = data.get('writing_style')
     book_description = data.get('book_description')
+    content_example = data.get('content_example')  # New data
     chapter_titles = data.get('chapter_titles')
     chapter_elaborations = data.get('chapter_elaborations', [])
 
     if not all([writing_style, book_description, chapter_titles]):
         raise ValueError("Missing data for writing style, book description, or chapter titles")
 
-    chapters_content = generate_book(writing_style, book_description, chapter_titles, chapter_elaborations)
+    chapters_content = generate_book(writing_style, book_description, content_example, chapter_titles, chapter_elaborations)  # Pass content_example to generate_book
     title = generate_title(book_description)
 
     file_stream = io.BytesIO()
@@ -130,7 +131,8 @@ def generate_book_data(data):
 
     return title, download_url, document_id
 
-def generate_book(writing_style, book_description, chapter_titles, chapter_elaborations):
+
+def generate_book(writing_style, book_description, content_example, chapter_titles, chapter_elaborations):
     all_chapters_content = []
 
     for i, chapter_title in enumerate(chapter_titles):

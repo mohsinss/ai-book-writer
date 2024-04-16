@@ -18,9 +18,11 @@ const BookForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormModified, setIsFormModified] = useState(false);
   const [bookId, setBookId] = useState('');
+  const [contentExample, setContentExample] = useState('');
 
-  console.log(process.env.NEXT_PUBLIC_API_BASE_URL); // Debug API base URL
-
+  console.log(process.env.NEXT_PUBLIC_API_BASE_URL); 
+  
+  
   const handleChapterCountChange = (e) => {
     const count = parseInt(e.target.value, 10);
     setChapterCount(count);
@@ -61,6 +63,7 @@ const BookForm = () => {
     const formData = {
       writing_style: writingStyle,
       book_description: bookDescription,
+      content_example: contentExample, // new field
       chapter_titles: chapterTitles,
       chapter_elaborations: chapterElaborations,
     };
@@ -149,6 +152,7 @@ const BookForm = () => {
             className={styles.input}
           />
         </div>
+        
         <div className={styles.formGroup}>
           <label htmlFor="bookDescription" className={styles.label}>
             Book Description
@@ -163,6 +167,20 @@ const BookForm = () => {
             className={styles.textarea}
           />
         </div>
+        <div className={styles.formGroup}>
+  <label htmlFor="contentExample" className={styles.label}>
+    Content Example
+  </label>
+  <textarea
+    id="contentExample"
+    value={contentExample}
+    onChange={(e) => {
+      setContentExample(e.target.value);
+      handleInputChange();
+    }}
+    className={styles.textarea}
+  />
+</div>
         <div className={styles.formGroup}>
   <label htmlFor="chapterCount" className={styles.label}>
     Number of Chapters
@@ -192,6 +210,7 @@ const BookForm = () => {
                 onChange={() => handleChapterCheck(index)}
                 className={styles.checkbox}
               />
+              
               <label htmlFor={`chapterTitle${index}`} className={styles.label}>
                 Chapter {index + 1} Title
               </label>
