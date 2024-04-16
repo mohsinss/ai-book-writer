@@ -91,7 +91,7 @@ def create_doc(title, author, chapters, chapter_titles, file_stream):
 
     document.save(file_stream)
 
-def save_book(file_stream, title, unique_filename, additional_data):
+def save_book(file_stream, title, unique_filename):
     # Convert file stream to binary
     binary_file = Binary(file_stream.getvalue())
     
@@ -99,10 +99,7 @@ def save_book(file_stream, title, unique_filename, additional_data):
     book_document = {
         "filename": unique_filename,
         "title": title,
-        "content": binary_file,
-        "writing_style": additional_data['writing_style'],
-        "book_description": additional_data['book_description'],
-        "content_example": additional_data.get('content_example', 'No example provided')  # Optional field
+        "content": binary_file
     }
     
     # Insert the document into the collection
@@ -112,42 +109,28 @@ def save_book(file_stream, title, unique_filename, additional_data):
     return result.inserted_id
 
 def generate_book_data(data):
-    # Pull necessary fields from the data
     writing_style = data.get('writing_style')
     book_description = data.get('book_description')
-    content_example = data.get('content_example')
     chapter_titles = data.get('chapter_titles')
     chapter_elaborations = data.get('chapter_elaborations', [])
 
-    # Generate content based on the provided data (mockup, implement your generation logic here)
+    if not all([writing_style, book_description, chapter_titles]):
+        raise ValueError("Missing data for writing style, book description, or chapter titles")
+
     chapters_content = generate_book(writing_style, book_description, chapter_titles, chapter_elaborations)
     title = generate_title(book_description)
 
-    # Prepare the document
     file_stream = io.BytesIO()
     create_doc(title, 'Author Name', chapters_content, chapter_titles, file_stream)
     file_stream.seek(0)
 
-    # Data to store in MongoDB
-    additional_data = {
-        "writing_style": writing_style,
-        "book_description": book_description,
-        "content_example": content_example,
-        "chapter_titles": chapter_titles,
-        "chapter_elaborations": chapter_elaborations
-    }
-
-    # Save to MongoDB and get document ID
     unique_filename = str(uuid.uuid4())
-    document_id = save_book(file_stream, title, unique_filename, additional_data)
+    document_id = save_book(file_stream, title, unique_filename)
     download_url = f"http://localhost:5001/download/{str(document_id)}"
 
     return title, download_url, document_id
 
-
-
-
-def generate_book(writing_style, book_description, content_example, chapter_titles, chapter_elaborations):
+def generate_book(writing_style, book_description, chapter_titles, chapter_elaborations):
     all_chapters_content = []
 
     for i, chapter_title in enumerate(chapter_titles):
