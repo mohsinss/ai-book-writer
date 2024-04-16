@@ -2,7 +2,6 @@ from flask import Flask, request, send_file, jsonify, current_app, Response
 from flask_cors import CORS
 import traceback
 from book_generator import generate_book_data, download_book, collection 
-
 app = Flask(__name__)
 CORS(app)
 

@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Environment variable for MongoDB URI
-MONGO_URI = os.getenv('MONGO_URI')  # Make sure to set this in your .env file
+MONGO_URI = 'mongodb+srv://aba326ss:160160ssSS@cluster0.2h1ad.mongodb.net/ai-books?retryWrites=true&w=majority'  # Make sure to set this in your .env file
 
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 
@@ -163,8 +163,14 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
 
 def download_book(document_id):
     try:
+        # Convert string to ObjectId
+        object_id = ObjectId(document_id)
+    except Exception as e:
+        return None, f"Invalid MongoDB ObjectId: {str(e)}", 400
+
+    try:
         # Fetch the document by its ID from MongoDB
-        book_document = collection.find_one({"_id": ObjectId(document_id)})
+        book_document = collection.find_one({"_id": object_id})
         if not book_document:
             return None, "File not found", 404
         
@@ -173,4 +179,7 @@ def download_book(document_id):
         filename = f"{book_document['title']}.docx"
         return file_stream, filename, None
     except Exception as e:
+        # Log the error to debug
+        print(f"Error accessing MongoDB: {str(e)}")
         return None, str(e), 500
+
