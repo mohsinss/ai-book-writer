@@ -91,7 +91,7 @@ def create_doc(title, author, chapters, chapter_titles, file_stream):
 
     document.save(file_stream)
 
-def save_book(file_stream, title, unique_filename):
+def save_book(file_stream, title, unique_filename, additional_data):
     # Convert file stream to binary
     binary_file = Binary(file_stream.getvalue())
     
@@ -99,7 +99,10 @@ def save_book(file_stream, title, unique_filename):
     book_document = {
         "filename": unique_filename,
         "title": title,
-        "content": binary_file
+        "content": binary_file,
+        "writing_style": additional_data['writing_style'],
+        "book_description": additional_data['book_description'],
+        "content_example": additional_data.get('content_example', 'No example provided')  # Optional field
     }
     
     # Insert the document into the collection
@@ -111,14 +114,14 @@ def save_book(file_stream, title, unique_filename):
 def generate_book_data(data):
     writing_style = data.get('writing_style')
     book_description = data.get('book_description')
-    content_example = data.get('content_example')  # New data
+    content_example = data.get('content_example')  # Assume this is optionally provided
     chapter_titles = data.get('chapter_titles')
     chapter_elaborations = data.get('chapter_elaborations', [])
 
     if not all([writing_style, book_description, chapter_titles]):
         raise ValueError("Missing data for writing style, book description, or chapter titles")
 
-    chapters_content = generate_book(writing_style, book_description, content_example, chapter_titles, chapter_elaborations)  # Pass content_example to generate_book
+    chapters_content = generate_book(writing_style, book_description, chapter_titles, chapter_elaborations)  # Use existing generate_book function
     title = generate_title(book_description)
 
     file_stream = io.BytesIO()
@@ -126,10 +129,16 @@ def generate_book_data(data):
     file_stream.seek(0)
 
     unique_filename = str(uuid.uuid4())
-    document_id = save_book(file_stream, title, unique_filename)
+    additional_data = {
+        "writing_style": writing_style,
+        "book_description": book_description,
+        "content_example": content_example
+    }
+    document_id = save_book(file_stream, title, unique_filename, additional_data)
     download_url = f"http://localhost:5001/download/{str(document_id)}"
 
     return title, download_url, document_id
+
 
 
 def generate_book(writing_style, book_description, content_example, chapter_titles, chapter_elaborations):
