@@ -112,32 +112,38 @@ def save_book(file_stream, title, unique_filename, additional_data):
     return result.inserted_id
 
 def generate_book_data(data):
+    # Pull necessary fields from the data
     writing_style = data.get('writing_style')
     book_description = data.get('book_description')
-    content_example = data.get('content_example')  # Assume this is optionally provided
+    content_example = data.get('content_example')
     chapter_titles = data.get('chapter_titles')
     chapter_elaborations = data.get('chapter_elaborations', [])
 
-    if not all([writing_style, book_description, chapter_titles]):
-        raise ValueError("Missing data for writing style, book description, or chapter titles")
-
-    chapters_content = generate_book(writing_style, book_description, chapter_titles, chapter_elaborations)  # Use existing generate_book function
+    # Generate content based on the provided data (mockup, implement your generation logic here)
+    chapters_content = generate_book(writing_style, book_description, chapter_titles, chapter_elaborations)
     title = generate_title(book_description)
 
+    # Prepare the document
     file_stream = io.BytesIO()
     create_doc(title, 'Author Name', chapters_content, chapter_titles, file_stream)
     file_stream.seek(0)
 
-    unique_filename = str(uuid.uuid4())
+    # Data to store in MongoDB
     additional_data = {
         "writing_style": writing_style,
         "book_description": book_description,
-        "content_example": content_example
+        "content_example": content_example,
+        "chapter_titles": chapter_titles,
+        "chapter_elaborations": chapter_elaborations
     }
+
+    # Save to MongoDB and get document ID
+    unique_filename = str(uuid.uuid4())
     document_id = save_book(file_stream, title, unique_filename, additional_data)
     download_url = f"http://localhost:5001/download/{str(document_id)}"
 
     return title, download_url, document_id
+
 
 
 

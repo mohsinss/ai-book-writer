@@ -6,12 +6,11 @@ app = Flask(__name__)
 
 @app.route('/api/generate-book', methods=['POST'])
 def generate_book_endpoint():
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 400
+    data = request.get_json()
+    print(f"Received data: {data}")  # Debug: Print received data
     try:
-        if not request.is_json:
-            return jsonify({"error": "Request must be JSON"}), 400
-        data = request.get_json()
-        # Log to check incoming data
-        print(f"Received data: {data}")
         title, download_url, document_id = generate_book_data(data)
         return jsonify({"message": "Book generated successfully", "download_url": download_url, "title": title, "id": str(document_id)}), 200
     except Exception as e:

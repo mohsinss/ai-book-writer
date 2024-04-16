@@ -67,12 +67,12 @@ const BookForm = () => {
       chapter_titles: chapterTitles,
       chapter_elaborations: chapterElaborations,
     };
-
+  
     try {
       const response = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/generate-book`, formData, {
         headers: { 'Content-Type': 'application/json' },
       });
-
+  
       if (response.data && response.data.download_url) {
         setDownloadUrl(response.data.download_url);
         setTitle(response.data.title);
@@ -86,6 +86,7 @@ const BookForm = () => {
     }
     setIsSubmitting(false);
   };
+  
 
   useEffect(() => {
     fetchBooks();
