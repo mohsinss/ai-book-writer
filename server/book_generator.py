@@ -156,7 +156,7 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
 
         chapter_content = "\n\n".join(subtitles_content)
         all_chapters_content.append(chapter_content)
-        time.sleep(1)  # Pause between chapters to avoid rate limiting
+        time.sleep(2)  # Pause between chapters to avoid rate limiting
 
     print("Book content generation completed.")
     return all_chapters_content
