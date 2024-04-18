@@ -137,7 +137,7 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
         print(f"Generating content for chapter '{chapter_title}'...")
         subtitles_content = []
 
-        for subtitle_index in range(1, 3):
+        for subtitle_index in range(1, 4):
             attempts, subtitle_generated, max_attempts = 0, False, 3
 
             while not subtitle_generated and attempts < max_attempts:
@@ -147,7 +147,7 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
                     subtitle_prompt += f" Follow the instructions provided and include the following additional information after thinking it through intelligently. Add them in a way that is balanced and not excessive or abnormal: {chapter_elaborations[i]}"                
                 subtitle_content = generate_text(subtitle_prompt, max_tokens=3000)
 
-                if word_count(subtitle_content) >= 500:
+                if word_count(subtitle_content) >= 800:
                     subtitle_generated = True
                     subtitles_content.append(subtitle_content)
                 else:
