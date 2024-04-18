@@ -137,7 +137,7 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
         print(f"Generating content for chapter '{chapter_title}'...")
         subtitles_content = []
 
-        for subtitle_index in range(1, 4):
+        for subtitle_index in range(1, 3):
             attempts, subtitle_generated, max_attempts = 0, False, 3
 
             while not subtitle_generated and attempts < max_attempts:
