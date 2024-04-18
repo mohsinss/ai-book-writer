@@ -92,14 +92,16 @@ const BookForm = () => {
     fetchBooks();
   }, []);
 
-  const fetchBooks = async () => {
+const fetchBooks = async () => {
     try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/books`);
-      setBooks(response.data);
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/books`);
+        console.log(response.data); // Add this line to see what you receive from the server
+        setBooks(response.data.books); // Ensure you are setting the state with the correct data structure
     } catch (error) {
-      console.error('Error fetching books::', error);
+        console.error('Error fetching books:', error);
     }
-  };
+};
+
 
   const handleDownload = (event, bookId, title) => {
     event.preventDefault();
