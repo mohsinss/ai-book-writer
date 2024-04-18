@@ -147,7 +147,7 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
                     subtitle_prompt += f" Follow the instructions provided and include the following additional information after thinking it through intelligently. Add them in a way that is balanced and not excessive or abnormal: {chapter_elaborations[i]}"                
                 subtitle_content = generate_text(subtitle_prompt, max_tokens=3000)
 
-                if word_count(subtitle_content) >= 800:
+                if word_count(subtitle_content) >= 500:
                     subtitle_generated = True
                     subtitles_content.append(subtitle_content)
                 else:
