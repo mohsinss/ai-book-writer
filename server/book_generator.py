@@ -6,6 +6,7 @@ import json
 import uuid
 import io
 import pymongo
+
 from docx import Document
 from docx.shared import RGBColor
 from docx.shared import Pt
@@ -14,19 +15,26 @@ from bson.binary import Binary
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 from dotenv import load_dotenv
+
 # Load environment variables
 load_dotenv()
+
 # Environment variable for MongoDB URI
 MONGO_URI = 'mongodb+srv://aba326ss:160160ssSS@cluster0.2h1ad.mongodb.net/ai-books?retryWrites=true&w=majority'  # Make sure to set this in your .env file
+
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
+
 # Initialize MongoDB connection
 client = MongoClient(MONGO_URI)
 db = client.get_default_database()  # This will connect to the default database specified in the URI
 collection = db['books'] 
+
 def remove_first_line(test_string):
     return re.sub(r'^.*\n', '', test_string, count=1) if test_string.startswith("Here") and test_string.split("\n")[0].strip().endswith(":") else test_string
+
 def word_count(s):
     return len(re.findall(r'\w+', s))
+
 def generate_text(prompt, model="claude-3-haiku-20240307", max_tokens=3000, temperature=0.7, retries=5, max_wait=60):
     headers = {
         "x-api-key": ANTHROPIC_API_KEY,
@@ -59,14 +67,17 @@ def generate_text(prompt, model="claude-3-haiku-20240307", max_tokens=3000, temp
         else:
             raise ValueError(f"Failed to fetch data from API. Status Code: {response.status_code}, Attempt: {attempt+1}")
     raise Exception("Max retries exceeded.")
+
 def generate_title(plot):
     prompt = f"Here is the plot for the book: {plot}\n\n--\n\nRespond with a great title for this book. Only respond with the title, nothing else is allowed."
     return remove_first_line(generate_text(prompt))
+
 def create_doc(title, author, chapters, chapter_titles, file_stream):
     document = Document()
     document.add_heading(title, level=0)
     run = document.add_paragraph().add_run(f"Author: {author}\n\n")
     run.bold = True
+
     for i, chapter_title in enumerate(chapter_titles):
         chapter_content = chapters[i]
         document.add_heading(chapter_title, level=1)
@@ -77,8 +88,10 @@ def create_doc(title, author, chapters, chapter_titles, file_stream):
                 if paragraph.startswith("Subtitle"):
                     run.bold = True
                     run.font.color.rgb = RGBColor(34, 139, 34)
+
     document.save(file_stream)
-def save_book(file_stream, title, unique_filename):
+
+def save_book(file_stream, title, unique_filename, additional_data):
     # Convert file stream to binary
     binary_file = Binary(file_stream.getvalue())
     
@@ -86,7 +99,10 @@ def save_book(file_stream, title, unique_filename):
     book_document = {
         "filename": unique_filename,
         "title": title,
-        "content": binary_file
+        "content": binary_file,
+        "writing_style": additional_data['writing_style'],
+        "book_description": additional_data['book_description'],
+        "content_example": additional_data.get('content_example', 'No example provided')  # Optional field
     }
     
     # Insert the document into the collection
@@ -94,29 +110,47 @@ def save_book(file_stream, title, unique_filename):
     
     # Return the MongoDB ID of the inserted document
     return result.inserted_id
+
 def generate_book_data(data):
+    # Pull necessary fields from the data
     writing_style = data.get('writing_style')
     book_description = data.get('book_description')
+    content_example = data.get('content_example')
     chapter_titles = data.get('chapter_titles')
     chapter_elaborations = data.get('chapter_elaborations', [])
+
     if not all([writing_style, book_description, chapter_titles]):
         raise ValueError("Missing data for writing style, book description, or chapter titles")
+
     chapters_content = generate_book(writing_style, book_description, chapter_titles, chapter_elaborations)
     title = generate_title(book_description)
+
     file_stream = io.BytesIO()
     create_doc(title, 'Author Name', chapters_content, chapter_titles, file_stream)
     file_stream.seek(0)
+    
+    # Data to store in MongoDB
+    additional_data = {
+        "writing_style": writing_style,
+        "book_description": book_description,
+        "content_example": content_example,
+        "chapter_titles": chapter_titles,
+        "chapter_elaborations": chapter_elaborations
+    }
     unique_filename = str(uuid.uuid4())
-    document_id = save_book(file_stream, title, unique_filename)
+    document_id = save_book(file_stream, title, unique_filename, additional_data)
     download_url = f"http://localhost:5001/download/{str(document_id)}"
+
     return title, download_url, document_id
+
 def generate_book(writing_style, book_description, chapter_titles, chapter_elaborations):
     all_chapters_content = []
+
     for i, chapter_title in enumerate(chapter_titles):
         print(f"Generating content for chapter '{chapter_title}'...")
         subtitles_content = []
 
-        for subtitle_index in range(1, 2):
+        for subtitle_index in range(1, 4):
             attempts, subtitle_generated, max_attempts = 0, False, 3
 
             while not subtitle_generated and attempts < max_attempts:
@@ -125,23 +159,28 @@ def generate_book(writing_style, book_description, chapter_titles, chapter_elabo
                 if i < len(chapter_elaborations) and chapter_elaborations[i]:
                     subtitle_prompt += f" Follow the instructions provided and include the following additional information after thinking it through intelligently. Add them in a way that is balanced and not excessive or abnormal: {chapter_elaborations[i]}"                
                 subtitle_content = generate_text(subtitle_prompt, max_tokens=3000)
+
                 if word_count(subtitle_content) >= 500:
                     subtitle_generated = True
                     subtitles_content.append(subtitle_content)
                 else:
                     attempts += 1
                     print(f"Insufficient content for subtitle {subtitle_index} in chapter '{chapter_title}'. Attempting regeneration, attempt #{attempts}.")
+
         chapter_content = "\n\n".join(subtitles_content)
         all_chapters_content.append(chapter_content)
-        time.sleep(1)  # Pause between chapters to avoid rate limiting
+        time.sleep(2)  # Pause between chapters to avoid rate limiting
+
     print("Book content generation completed.")
     return all_chapters_content
+
 def download_book(document_id):
     try:
         # Convert string to ObjectId
         object_id = ObjectId(document_id)
     except Exception as e:
         return None, f"Invalid MongoDB ObjectId: {str(e)}", 400
+
     try:
         # Fetch the document by its ID from MongoDB
         book_document = collection.find_one({"_id": object_id})
